@@ -138,31 +138,59 @@ def prepareLayers():
 # (sowie einen Layer mit Gehwegübergängen, der nicht gerendert wird)
 #-----------------------------------------------------------------------------------
     print(time.strftime('%H:%M:%S', time.localtime()), 'Prepare street data...')
+    
+    #read in street-layer as line dataset and crossings-layer as point, use geopandas import function
     layer_raw = QgsVectorLayer(dir + 'data/input.geojson|geometrytype=LineString', 'streets (raw)', 'ogr')
     layer_crossing = QgsVectorLayer(dir + 'data/input.geojson|geometrytype=Point', 'pedestrian crossings (raw)', 'ogr')
 
     #Abbrechen, wenn keine Parkstreifen-Attribute vorhanden sind
+    #exit if parking atttributes are not present, in Python use assert()
     if not fillBaseAttributes(layer_raw, False):
         return False
 
     print(time.strftime('%H:%M:%S', time.localtime()), 'Insert street data...')
+    
+    #HERE ONLY STREET DATA:
 
     #Straßen-Input in einen Straßen- und einen Einfahrtlayer teilen
+    #because there are different kinds of street types, divide the layer_raw street dataset into two, also save projection from OSM to Berlin
+    #this could be done without saving anything to hard drive
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_raw, dir + 'data/streets_processed.geojson', transform_context, save_options)
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_raw, dir + 'data/service_processed.geojson', transform_context, save_options)
+    
+    #save crossing-datasset projection from OSM to Berlin
+    #this could be done without saving anything to hard drive
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_crossing, dir + 'data/crossing.geojson', transform_context, save_options)
+    
+    #reading the dataset back in with new layer names, this step can be avoided in geopandas by just changing the projection
+    #new names will be kept though, not to get too confused about following the linearity of the script
+    
+    #street-layer "layer_street" is read back in after projection change
     layer_street = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'data/streets_processed.geojson', 'streets', 'ogr'), False)
     group_streets.insertChildNode(0, QgsLayerTreeLayer(layer_street))
+    
+    #second street-layer layer_service is read back in after projection change
     layer_service = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'data/service_processed.geojson', 'driveways', 'ogr'), False)
     group_streets.insertChildNode(0, QgsLayerTreeLayer(layer_service))
+    
+    #crossing-layer layer_crossing is read back in after projection change
     layer_crossing = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'data/crossing.geojson', 'pedestrian crossings', 'ogr'), False)
-
-    #Parkstreifen separat vorbereiten
+    
+    #HERE ONLY PARKING DATA:
+    
     print(time.strftime('%H:%M:%S', time.localtime()), 'Insert parking lane data...')
+    #Parkstreifen separat vorbereiten
+   
+    #save parking-lanes-dataset (left and right) projection from OSM to Berlin by saving it to hard drive
+    #this could be done in Geopandas without saving anything to hard drive
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_raw, dir + 'data/parking_lanes/parking_lanes_left.geojson', transform_context, save_options)
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_raw, dir + 'data/parking_lanes/parking_lanes_right.geojson', transform_context, save_options)
+    
+    #parking-lanes-datasets (left and right) are read back in after projection change
     layer_parking_left = QgsVectorLayer(dir + 'data/parking_lanes/parking_lanes_left.geojson', 'parking lane left', 'ogr')
     layer_parking_right = QgsVectorLayer(dir + 'data/parking_lanes/parking_lanes_right.geojson', 'parking lane right', 'ogr')
+    
+    #not sure what this is good for
     #layer_parking_left = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'parking_lanes_left.geojson', 'parking lane left', 'ogr'))
     #layer_parking_right = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'parking_lanes_right.geojson', 'parking lane right', 'ogr'))
 
