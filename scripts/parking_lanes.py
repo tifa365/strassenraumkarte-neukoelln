@@ -268,23 +268,29 @@ def prepareLayers():
         for feature in layer.getFeatures():
             #this might be doubles, since column names are already filtered/cut down to by the "is_service_list":
             if feature.attribute('highway') in is_service_list:
+                #delting those streets without any parking options on either side
                 if not feature.attribute('parking:lane:left') and not feature.attribute('parking:lane:right'):
                     layer_parking_left.deleteFeature(feature.id())
                     layer_parking_right.deleteFeature(feature.id())
-
+        
+        #parking_key_list = ['highway', 'name', 'width_proc', 'width_proc:effective', 'error_output']
+        #deleting columns (names) that don't contain any of the columns defined in "parking_key_list" AND 'parking:lane' AND parking:condition' (they need all 3!)
         attributes = len(layer.fields().allAttributesList())
         for id in range(attributes-1, 0, -1):
             if not layer.attributeDisplayName(id) in parking_key_list and not 'parking:lane' in layer.attributeDisplayName(id) and not 'parking:condition' in layer.attributeDisplayName(id):
                 layer.deleteAttribute(id)
-
+        
+        #rename columns names into "highway:X" to specify the columns for calculating the street with (and thus parking space?) 
         #Bewahrte Felder umbenennen, um den Bezug auf die Straßenbreite zu verdeutlichen
         for attr in parking_key_list:
             if attr != 'highway' and attr != 'error_output':
                 layer.renameAttribute(layer.fields().indexOf(attr), 'highway:'+attr)
  
+        #C stuff that can be ignored
         layer.updateFields()
         layer.commitChanges()
-
+        
+        #dividing parking layer into left and right parking, this might be repeated unnecessarily/or we eventually split the dataframe at this point 
         if side == 'left':
             layer_parking_left = layer
         else:
@@ -307,7 +313,7 @@ def fillBaseAttributes(layer, commit):
 #---------------------------------------------------------------------------
     layer.startEditing()
 
-    #Breiten- und Parkstreifenattribute anlegen, falls diese nicht existieren
+    #Breiten- und Parkstreifenattribute anlegen, falls diese nicht existieren 
     for attr in ['width_proc', 'width_proc:effective', 'parking:lane:left', 'parking:lane:right', 'parking:lane:left:position', 'parking:lane:right:position', 'parking:lane:left:width', 'parking:lane:right:width', 'parking:lane:left:width:carriageway', 'parking:lane:right:width:carriageway', 'parking:lane:left:offset', 'parking:lane:right:offset', 'error_output']:
         if layer.fields().indexOf(attr) == -1:
             layer.dataProvider().addAttributes([QgsField(attr, QVariant.String)])
