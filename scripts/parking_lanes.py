@@ -179,8 +179,8 @@ def prepareLayers():
     #HERE ONLY PARKING DATA:
     
     print(time.strftime('%H:%M:%S', time.localtime()), 'Insert parking lane data...')
+    
     #Parkstreifen separat vorbereiten
-   
     #save parking-lanes-dataset (left and right) projection from OSM to Berlin by saving it to hard drive
     #this could be done in Geopandas without saving anything to hard drive
     QgsVectorFileWriter.writeAsVectorFormatV2(layer_raw, dir + 'data/parking_lanes/parking_lanes_left.geojson', transform_context, save_options)
@@ -190,44 +190,83 @@ def prepareLayers():
     layer_parking_left = QgsVectorLayer(dir + 'data/parking_lanes/parking_lanes_left.geojson', 'parking lane left', 'ogr')
     layer_parking_right = QgsVectorLayer(dir + 'data/parking_lanes/parking_lanes_right.geojson', 'parking lane right', 'ogr')
     
-    #not sure what this is good for
+    #not sure what this is good for:
     #layer_parking_left = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'parking_lanes_left.geojson', 'parking lane left', 'ogr'))
     #layer_parking_right = QgsProject.instance().addMapLayer(QgsVectorLayer(dir + 'parking_lanes_right.geojson', 'parking lane right', 'ogr'))
 
     print(time.strftime('%H:%M:%S', time.localtime()), 'Edit street data: Clean up dataset...')
+    
+    #C likes to start editing files just like this
     layer_street.startEditing()
     layer_service.startEditing()
-
+    
+    #is_service_list : list of highway tags that do not belong to the regular road and are deleted at this point
+    #is_service_list = ['service', 'track', 'bus_guideway', 'footway', 'cycleway', 'path']
     #Straßen- und Einfahrten-Layer separieren/nicht benötige Objekte jeweils löschen
+    #"highway" is a column (name) in Geopandas, an attribute is one of the column's values/rows, the for-loop substitutes .apply() on the column
     for feature in layer_street.getFeatures():
         if feature.attribute('highway') in is_service_list:
             layer_street.deleteFeature(feature.id())
         else:
             layer_service.deleteFeature(feature.id())
-
+    
+    #did we filter only values so far, we're moving now to the actual dataframe attributes, in Geopandas the COLUMNS (column names)
+    
+    #these are the column names that we like to keep, nothing else
+    street_key_list = [
+'highway',
+'name',
+'width_proc',
+'width_proc:effective',
+'surface',
+'parking:lane:left',
+'parking:lane:right',
+'parking:lane:left:position',
+'parking:lane:right:position',
+'parking:lane:left:width',
+'parking:lane:right:width',
+'parking:lane:left:width:carriageway',
+'parking:lane:right:width:carriageway',
+'parking:lane:left:offset',
+'parking:lane:right:offset',
+'error_output'
+]
+    #just C to gather the list of columns, in Geopandas this is simply df.columns
     attributes = len(layer_street.attributeList())
+    
+    #iterating through the column list to delete all columns not present in the street_key_list list 
     for id in range(attributes-1, 0, -1):
         if not layer_street.attributeDisplayName(id) in street_key_list:
             layer_street.deleteAttribute(id)
             layer_service.deleteAttribute(id)
+    
+    #this is just C stuff and can be safely ignored when ported to Python        
     layer_street.updateFields()
     layer_street.commitChanges()
     layer_service.updateFields()
     layer_service.commitChanges()
 
-    #zunächst alle unbenötigten Attribute löschen - (2) für Parkstreifenlayer
+    
     print(time.strftime('%H:%M:%S', time.localtime()), 'Edit parking lane data: Clean up dataset...')
+    
+    #this is just C stuff and can be safely ignored when ported to Python 
     layer_parking_left.startEditing()
     layer_parking_right.startEditing()
-
+    
+    #zunächst alle unbenötigten Attribute löschen - (2) für Parkstreifenlayer
+    
+    #the parking-layer dataframe is being divded into left-, right-parking depending on the side-value(? - how does the df look like here?)
+    #is "side" really one of the attributes/columns in the dataframe(?)
     for side in ['left', 'right']:
         if side == 'left':
             layer = layer_parking_left
         else:
             layer = layer_parking_right
-
+        
+        #Some of the street don't have any parking layer on either side, that's why we're filtering those out of the df        
         #Erschließungs-/Wirtschaftswege ohne Parkplatzinformation entfernen
         for feature in layer.getFeatures():
+            #this might be doubles, since column names are already filtered/cut down to by the "is_service_list":
             if feature.attribute('highway') in is_service_list:
                 if not feature.attribute('parking:lane:left') and not feature.attribute('parking:lane:right'):
                     layer_parking_left.deleteFeature(feature.id())
