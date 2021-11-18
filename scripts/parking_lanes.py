@@ -402,12 +402,16 @@ def fillBaseAttributes(layer, commit):
         
         #calculate parking orientation
         #Parkposition ermitteln (insbes. Straßen-/Bordsteinparken)
+        
+        #again, combine both parking_left and parking_right datasets(?)
         for side in ['left', 'right']:
             position = NULL
             if side == 'left':
                 parking_orientation = parking_left
             else:
                 parking_orientation = parking_right
+                
+                
             if parking_orientation:
                 dir_side = 'parking:lane:' + side + ':' + parking_orientation in layer.attributeAliases()
                 dir_both = 'parking:lane:both:' + parking_orientation in layer.attributeAliases()
