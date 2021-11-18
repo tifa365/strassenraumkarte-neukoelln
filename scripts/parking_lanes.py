@@ -255,7 +255,7 @@ def prepareLayers():
     
     #zunächst alle unbenötigten Attribute löschen - (2) für Parkstreifenlayer
     
-    #the parking-layer dataframe is being divded into left-, right-parking depending on the side-value(? - how does the df look like here?)
+    #the parking-layer dataframe is being combined into one layer to edit both simultatinously?
     #is "side" really one of the attributes/columns in the dataframe(?)
     for side in ['left', 'right']:
         if side == 'left':
@@ -290,12 +290,13 @@ def prepareLayers():
         layer.updateFields()
         layer.commitChanges()
         
-        #dividing parking layer into left and right parking, this might be repeated unnecessarily/or we eventually split the dataframe at this point 
+         #the parking-layer dataframes "left" and "righ" are separated again, dependig on the side "left" or "right" respectivly
         if side == 'left':
             layer_parking_left = layer
         else:
             layer_parking_right = layer
-
+    
+    #these values are returned from the function 
     return([layer_street, layer_service, layer_parking_left, layer_parking_right, layer_crossing])
 
 
@@ -311,14 +312,19 @@ def fillBaseAttributes(layer, commit):
 # > commit: (True/False) Gibt an, ob die Änderungen in layer gespeichert
 #           werden. "False" kann z.B. Änderungen am Input-Layer verhindern.
 #---------------------------------------------------------------------------
+    #C-code to start editing, ignore
     layer.startEditing()
-
+    
+    #Adding attributes (in our case column names) for each row, can be ignored in Python, since column names are always present, just the values are (should be) empty
     #Breiten- und Parkstreifenattribute anlegen, falls diese nicht existieren 
     for attr in ['width_proc', 'width_proc:effective', 'parking:lane:left', 'parking:lane:right', 'parking:lane:left:position', 'parking:lane:right:position', 'parking:lane:left:width', 'parking:lane:right:width', 'parking:lane:left:width:carriageway', 'parking:lane:right:width:carriageway', 'parking:lane:left:offset', 'parking:lane:right:offset', 'error_output']:
         if layer.fields().indexOf(attr) == -1:
             layer.dataProvider().addAttributes([QgsField(attr, QVariant.String)])
+            
+    #C-code, ignore
     layer.updateFields()
-        
+    
+    #each "parking" column (attribute) receives a variable pointing to it: Is this needed in Python?
     id_width = layer.fields().indexOf('width_proc')
     id_width_effective = layer.fields().indexOf('width_proc:effective')
     id_parking_left = layer.fields().indexOf('parking:lane:left')
@@ -332,31 +338,49 @@ def fillBaseAttributes(layer, commit):
     id_parking_left_offset = layer.fields().indexOf('parking:lane:left:offset')
     id_parking_right_offset = layer.fields().indexOf('parking:lane:right:offset')
     id_error = layer.fields().indexOf('error_output')
-
+    
+    #if all three fields 'parking:lane:both' + id_parking_left + id_parking_right are empty, return FALSE. Could be circumvented with ???
     if layer.fields().indexOf('parking:lane:both') + id_parking_left + id_parking_right == -3:
         print(time.strftime('%H:%M:%S', time.localtime()), 'Input dataset ("' + dir + 'data/input.geojson' + '") does not contain parking lane information ("parking:lane:*"). Processing aborted.')
         return(False)
 
+    #each "street" column (attribute) receives a variable pointing to it
     #Basisattribute ermitteln
     id_width = layer.fields().indexOf('width_proc')
     wd = layer.fields().indexOf('width')
     wd_car = layer.fields().indexOf('width:carriageway')
     wd_est = layer.fields().indexOf('est_width')
     constr = layer.fields().indexOf('construction')
+    
+    #not sure what this does?
     for feature in layer.getFeatures():
         error = ''
-
+        
+        #calculate which parking formation is the correct one
         #Parkausrichtung ermitteln (Längs-, Schräg-, Querparken)
+        
+        #the parking "left" and "right" columns (attribute) receive a variable pointing to it
         parking_left = feature.attribute('parking:lane:left')
         parking_right = feature.attribute('parking:lane:right')
+        
+        #these are all just: if field is not empty, return True/False values
+        
+        #this can be simplified with Python!
+        
+        # if value 'parking:lane:both' is present in colum, assign 'attribute('parking:lane:both')' Work here with True/False!!
         if layer.fields().indexOf('parking:lane:both') != -1:
             parking_orientation = feature.attribute('parking:lane:both')
+            
+            #if the parking formation value is not empty but 'parking_left' is empty, assign 'parking:lane:both'
             if parking_orientation != NULL:
                 if parking_left == NULL:
                     parking_left = parking_orientation
                     layer.changeAttributeValue(feature.id(), id_parking_left, parking_orientation)
+                #else (if both values are present simultaniously!), throw error message    
                 else:
                     error += '[pl01l] Attribute "parking:lane:left" und "parking:lane:both" gleichzeitig vorhanden. '
+                    
+                ##if the parking formation value 'parking_right" is empty but 'parking_left' is empty, assign 'parking:lane:both'    
                 if parking_right == NULL:
                     parking_right = parking_orientation
                     layer.changeAttributeValue(feature.id(), id_parking_right, parking_orientation)
@@ -366,6 +390,7 @@ def fillBaseAttributes(layer, commit):
                 if not parking_left or not parking_right:
                     error += '[no_pl] Parkstreifeninformation nicht für alle Seite vorhanden. '
         else:
+            #if neither value is present, return an error message
             if not parking_left or not parking_right:
                 error += '[no_pl] Parkstreifeninformation nicht für alle Seite vorhanden. '
 
