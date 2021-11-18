@@ -352,7 +352,7 @@ def fillBaseAttributes(layer, commit):
     wd_est = layer.fields().indexOf('est_width')
     constr = layer.fields().indexOf('construction')
     
-    #not sure what this does?
+    #produce error in case value does not exist(?)
     for feature in layer.getFeatures():
         error = ''
         
@@ -371,29 +371,36 @@ def fillBaseAttributes(layer, commit):
         if layer.fields().indexOf('parking:lane:both') != -1:
             parking_orientation = feature.attribute('parking:lane:both')
             
-            #if the parking formation value is not empty but 'parking_left' is empty, assign 'parking:lane:both'
+            #if the parking formation value is NOT empty but 'parking_left' is empty, assign 'parking:lane:both'
             if parking_orientation != NULL:
                 if parking_left == NULL:
                     parking_left = parking_orientation
                     layer.changeAttributeValue(feature.id(), id_parking_left, parking_orientation)
+                
                 #else (if both values are present simultaniously!), throw error message    
                 else:
                     error += '[pl01l] Attribute "parking:lane:left" und "parking:lane:both" gleichzeitig vorhanden. '
                     
-                ##if the parking formation value 'parking_right" is empty but 'parking_left' is empty, assign 'parking:lane:both'    
+                ##if the parking formation value 'parking_right" is empty but 'parking:lane:both' is not, assign 'parking:lane:both'    
                 if parking_right == NULL:
                     parking_right = parking_orientation
                     layer.changeAttributeValue(feature.id(), id_parking_right, parking_orientation)
+                
+                #else (if both values are present simultaniously!), throw error message 
                 else:
                     error += '[pl01r] Attribute "parking:lane:right" und "parking:lane:both" gleichzeitig vorhanden. '
+            
+            #else eiter parking right nor left is present, throw error message   
             else:
                 if not parking_left or not parking_right:
                     error += '[no_pl] Parkstreifeninformation nicht für alle Seite vorhanden. '
+        
+        #if not parking value is present at all, return an error message
         else:
-            #if neither value is present, return an error message
             if not parking_left or not parking_right:
                 error += '[no_pl] Parkstreifeninformation nicht für alle Seite vorhanden. '
-
+        
+        #calculate parking orientation
         #Parkposition ermitteln (insbes. Straßen-/Bordsteinparken)
         for side in ['left', 'right']:
             position = NULL
@@ -472,7 +479,8 @@ def fillBaseAttributes(layer, commit):
         if width == NULL and wd_est != -1:
             if wd_est != -1:
                 width = feature.attribute('est_width')
-
+        
+        #substitute unit data with the correct European units
         #Einheiten korrigieren
         if width != NULL:
             unit_list = ['cm', 'm', ' cm', ' m']
@@ -481,7 +489,8 @@ def fillBaseAttributes(layer, commit):
                     width = width[:len(width) - len(unit)]
                     if 'cm' in unit:
                         width = width / 100
-
+        
+        #else estimate street with from OSM data street type (statistics)
         #Ansonsten Breite aus anderen Straßenattributen abschätzen
         else:
             highway = feature.attribute('highway')
