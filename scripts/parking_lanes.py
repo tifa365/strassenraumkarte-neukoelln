@@ -556,25 +556,33 @@ def fillBaseAttributes(layer, commit):
             if width == NULL:
                 width = width_minor_street
         
-        #
+        #C-code to transfer values from one column to other, might be ignored
         layer.changeAttributeValue(feature.id(), id_width, width)
-
-        #Offset der Parkstreifen für spätere Verschiebung ermitteln (offset-Linie liegt am Bordstein)
+        
+        #Calculate offset between the street and the curb, 0 is default value
+        #Offset (Versatz) der Parkstreifen für spätere Verschiebung ermitteln (offset-Linie liegt am Bordstein)
         parking_left_width_carriageway = 0
         parking_right_width_carriageway = 0
+        
+        #loop through parking_left ['parallel', 'diagonal', 'perpendicular'], rename 'parking_left_width_carriageway' to 'parking_left_width', only if 'half_on_kerb' / 2
         if parking_left in ['parallel', 'diagonal', 'perpendicular']:
             parking_left_width_carriageway = parking_left_width
             if parking_left_position == 'half_on_kerb':
                 parking_left_width_carriageway = parking_left_width_carriageway / 2
+                
+            #if parking position is not half on kerb, the offset is 0 for all other parking formations
             if parking_left_position in ['on_kerb', 'shoulder', 'lay_by', 'street_side']:
                 parking_left_width_carriageway = 0
+                
+        #loop through parking_right ['parallel', 'diagonal', 'perpendicular'], rename 'parking_left_width_carriageway' to 'parking_left_width', only if 'half_on_kerb' / 2        
         if parking_right in ['parallel', 'diagonal', 'perpendicular']:
             parking_right_width_carriageway = parking_right_width
             if parking_right_position == 'half_on_kerb':
                 parking_right_width_carriageway = parking_right_width_carriageway / 2
             if parking_right_position in ['on_kerb', 'shoulder', 'lay_by', 'street_side']:
                 parking_right_width_carriageway = 0
-
+        
+        #substitute values that are still and create new columns called 'width_pl' and 'width_pr'
         width_pl = parking_left_width
         if not width_pl:
             width_pl = 0
@@ -582,25 +590,31 @@ def fillBaseAttributes(layer, commit):
         if not width_pr:
             width_pr = 0
 
+        #from the overall width of the whole street ('width'), both the left and the righ are deducted
         width_effective = float(width) - float(parking_left_width_carriageway) - float(parking_right_width_carriageway)
+        
+        #the actual offset value is calculated by dividing the whole street width by 2 for both sides and add the parrking lanes for each steert (left or right)
         parking_left_offset = (width_effective / 2) + float(parking_left_width_carriageway)
         parking_right_offset = -(width_effective / 2) - float(parking_right_width_carriageway)
 
 # Archivierte Berechnung für eine offset-Linie in der Mitte der tatsächlichen Parkspur
 #        parking_left_offset = (width_effective / 2) + (float(width_pl) / 2)
 #        parking_right_offset = -(width_effective / 2) - (float(width_pr) / 2)
-
+        
+        #C-code to change the layer values, can be ignored. For example, 'id_width_effectiv' overwrote 'width_effective'
         layer.changeAttributeValue(feature.id(), id_width_effective, width_effective)
         layer.changeAttributeValue(feature.id(), id_parking_left_width_carriageway, parking_left_width_carriageway)
         layer.changeAttributeValue(feature.id(), id_parking_right_width_carriageway, parking_right_width_carriageway)
         layer.changeAttributeValue(feature.id(), id_parking_left_offset, parking_left_offset)
         layer.changeAttributeValue(feature.id(), id_parking_right_offset, parking_right_offset)
 
+        #any errors will be save in the attribute, aka column
         #Mögliche Fehlermeldungen in Attribut speichern
         if error == '':
             error = NULL
         layer.changeAttributeValue(feature.id(), id_error, error)        
-
+    
+    #c-code
     layer.updateFields()
     if commit:
         layer.commitChanges()
