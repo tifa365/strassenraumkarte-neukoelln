@@ -485,22 +485,34 @@ def fillBaseAttributes(layer, commit):
                     parking_right_width = width_diag
                 if parking_right == 'perpendicular':
                     parking_right_width = width_perp
-
+            
+            #C-code to change  the variables of the layer, substitute 'id_parking_X_width' values with 'parking_left_width'. Ignore!
             layer.changeAttributeValue(feature.id(), id_parking_left_width, parking_left_width)
             layer.changeAttributeValue(feature.id(), id_parking_right_width, parking_right_width)
-
+        
+        #From here, STREET width is calculated!
+        
+        #calculate STREET width
         #Fahrbahnbreite ermitteln
         width = NULL
+        
+        #check whether the width in each of this steet types is not already present
         #Mögliche vorhandene Breitenattribute prüfen: width:carriageway, width, est_width
+        
+        #if variable wd_car exist, assign value of 'width:carriageway'
         if wd_car != -1:
             width = feature.attribute('width:carriageway')
+            
+        #if variable wd (width) exist, assign value of 'width:carriageway'    
         if width == NULL and wd != -1 :
             width = feature.attribute('width')
+        
+        #if variable wd_est (width estimated) exist, assign value of 'width:carriageway'  
         if width == NULL and wd_est != -1:
             if wd_est != -1:
                 width = feature.attribute('est_width')
         
-        #substitute unit data with the correct European units
+        #substitute unit data with the correct European units, if present!
         #Einheiten korrigieren
         if width != NULL:
             unit_list = ['cm', 'm', ' cm', ' m']
@@ -513,6 +525,7 @@ def fillBaseAttributes(layer, commit):
         #else estimate street with from OSM data street type (statistics)
         #Ansonsten Breite aus anderen Straßenattributen abschätzen
         else:
+            #if 'highway' column is present, calculate widt depending on column value
             highway = feature.attribute('highway')
             if highway == 'primary':
                 width = width_primary_street
@@ -525,6 +538,8 @@ def fillBaseAttributes(layer, commit):
                 if layer.fields().indexOf('service') != -1:
                     if feature.attribute('service') == 'driveway':
                         width = width_driveway
+            
+            #if 'highway' column has value 'construction', calculate widt depending on column value
             if highway == 'construction':
                 if constr:
                     construction = feature.attribute('highway')
@@ -536,9 +551,12 @@ def fillBaseAttributes(layer, commit):
                         width = width_tertiary_street
                     if construction in is_service_list:
                         width = width_service
-
+            
+            #if width is value NULL, assign 'width_minor_street'
             if width == NULL:
                 width = width_minor_street
+        
+        #
         layer.changeAttributeValue(feature.id(), id_width, width)
 
         #Offset der Parkstreifen für spätere Verschiebung ermitteln (offset-Linie liegt am Bordstein)
