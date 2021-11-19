@@ -411,13 +411,16 @@ def fillBaseAttributes(layer, commit):
             else:
                 parking_orientation = parking_right
                 
-                
+            #convert the side 'left' and parking:lane:both: into two separate variables
             if parking_orientation:
                 dir_side = 'parking:lane:' + side + ':' + parking_orientation in layer.attributeAliases()
                 dir_both = 'parking:lane:both:' + parking_orientation in layer.attributeAliases()
-
+                
+                #assign 
                 if dir_side:
                     position = feature.attribute('parking:lane:' + side + ':' + parking_orientation)
+                
+                
                 if dir_both:
                     if position and feature.attribute('parking:lane:both:' + parking_orientation):
                         error += '[pl02' + side[:1] + '] Attribute "parking:lane:' + side + ':' + parking_orientation +'" und "parking:lane:both:' + parking_orientation + '" gleichzeitig vorhanden. '
@@ -431,15 +434,25 @@ def fillBaseAttributes(layer, commit):
                     parking_right_position = position
                     layer.changeAttributeValue(feature.id(), id_parking_right_position, position)
 
+        #            
         parking_left_width = 0; parking_right_width = 0
+        
+        #if parking left or parking_right is present, calculate parking width
         if parking_left or parking_right:
+            #if 'parking:lane:left:width' exists, assign it to the variable parking_left_width 
             #Parkstreifenbreite ermitteln
             if layer.fields().indexOf('parking:lane:left:width') != -1:
                 parking_left_width = feature.attribute('parking:lane:left:width')
+                
+            #if 'parking:lane:left:width' exists, assign it to the variable parking_right_width    
             if layer.fields().indexOf('parking:lane:right:width') != -1:
                 parking_right_width = feature.attribute('parking:lane:right:width')
+                
+            #if 'parking:lane:both:width' exists, assign it to the variable parking_both_width      
             if layer.fields().indexOf('parking:lane:both:width') != -1:
                 parking_width = feature.attribute('parking:lane:both:width')
+                
+                #if parking_width 
                 if parking_width != NULL:
                     if parking_left_width == NULL:
                         parking_left_width = parking_width
@@ -451,6 +464,8 @@ def fillBaseAttributes(layer, commit):
                         layer.changeAttributeValue(feature.id(), id_parking_right_width, parking_width)
                     else:
                         error += '[pl03r] Attribute "parking:lane:right:width" und "parking:lane:both:width" gleichzeitig vorhanden. '
+                        
+            #if parking_width_left is not given, estimate the width from the parking format type (parallel, diagonal, perpendicular) and keep 0 as default             
             #Parkstreifenbreite aus Parkrichtung abschätzen, wenn nicht genauer angegeben
             if parking_left_width == NULL:
                 parking_left_width = 0
@@ -460,7 +475,8 @@ def fillBaseAttributes(layer, commit):
                     parking_left_width = width_diag
                 if parking_left == 'perpendicular':
                     parking_left_width = width_perp
-
+            
+            #if parking_width_right is not given, estimate the width from the parking format type (parallel, diagonal, perpendicular) and keep 0 as default 
             if parking_right_width == NULL:
                 parking_right_width = 0
                 if parking_right == 'parallel':
