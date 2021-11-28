@@ -705,7 +705,8 @@ def prepareParkingLane(layer, side, clean):
         elif side == 'right':
             id = id + '_r'
         layer.changeAttributeValue(feature.id(), id_id, id)
-
+        
+        #add errors to new column "error_new" if they occur
         #Relevante parkstreifenseitige Fehlermeldungen übernehmen, falls vorhanden
         error = feature.attribute('error_output')
         error_new = ''
@@ -720,17 +721,22 @@ def prepareParkingLane(layer, side, clean):
                         f_stop = f_string[1:].find('[') + 1
                         error_new += f_string[:f_stop]
         error = error_new
-
+        
+        #What are readable attributes?
         readable_attributes = ['parking:lane:both', 'parking:lane:'+side, 'parking:lane:'+side+':capacity', 'parking:lane:both:capacity', 'parking:lane:'+side+':width', 'parking:lane:both:width', 'parking:lane:'+side+':width:carriageway', 'parking:lane:'+side+':position', 'parking:lane:'+side+':offset', 'parking:condition:'+side, 'parking:condition:both', 'parking:condition:'+side+':default', 'parking:condition:both:default', 'parking:condition:'+side+':time_interval', 'parking:condition:both:time_interval', 'parking:condition:'+side+':vehicles', 'parking:condition:both:vehicles', 'parking:condition:'+side+':maxstay', 'parking:condition:both:maxstay']
 
+        #populate 'parking_orientation' column with values out of 'parking:lane:left' or 'parking:lane:right' or both-tags
         #Parkstreifeninfos auslesen (entweder aus left/right-Tagging oder aus both-Tagging)
         if side == 'left' and id_left != -1:
             parking_orientation = feature.attribute('parking:lane:left')
         if side == 'right' and id_right != -1:
             parking_orientation = feature.attribute('parking:lane:right')
-
+        
+        #delete those segments that do not sport a parking lane
         #Segmente ohne Parkplätze löschen
         parking_list = ['parallel', 'diagonal', 'perpendicular', 'marked']
+        
+        #if parking lane exists, 
         if parking_orientation in parking_list:
             parking_source_capacity = 'estimated'
         else:
