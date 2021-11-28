@@ -635,17 +635,24 @@ def prepareParkingLane(layer, side, clean):
 #          bereinigt werden soll. Insbesondere für die Fehlersuche im Rohdaten-
 #          satz kann es hilfreich sein, die Attribute zum Vergleich zu behalten.
 #------------------------------------------------------------------------------------
-
+    #Main Goal: Separate Parking Lane information into two attribute (in one layer)
+    
+    #assign new variables to columns(?) 'parking:lane:left', 'parking:lane:right' , supposedly to edit
     id_left = layer.fields().indexOf('parking:lane:left')
     id_right = layer.fields().indexOf('parking:lane:right')
-
+    
+    #C - can ignore
     layer.startEditing()
-
+    
+    #create new columns ("attributes")
     #Neue Attribute für Parkstreifeninformationen erstellen und deren ID's zur späteren Bearbeitung ermitteln
     for attr in ['parking', 'orientation', 'position', 'condition', 'condition:other', 'condition:other:time', 'vehicles', 'maxstay', 'capacity', 'source:capacity', 'width', 'offset']:
+        #attributes are added to layer
         layer.dataProvider().addAttributes([QgsField(attr, QVariant.String)])
+    #C-code, can ignore
     layer.updateFields()
-
+    
+    #assign new variables to columns("attributes") to edit
     id_id = layer.fields().indexOf('id')
     id_parking = layer.fields().indexOf('parking')
     id_parking_orientation = layer.fields().indexOf('orientation')
@@ -660,7 +667,8 @@ def prepareParkingLane(layer, side, clean):
     id_parking_width = layer.fields().indexOf('width')
     id_parking_offset = layer.fields().indexOf('offset')
     id_error = layer.fields().indexOf('error_output')
-
+    
+    #What are the aliases good for? Each attribute seems to be split into two separate entities
     cond_side = 'parking:condition:'+side in layer.attributeAliases()
     cond_both = 'parking:condition:both' in layer.attributeAliases()
     cond_default_side = 'parking:condition:'+side+':default' in layer.attributeAliases()
@@ -673,7 +681,8 @@ def prepareParkingLane(layer, side, clean):
     maxstay_both = 'parking:condition:both:maxstay' in layer.attributeAliases()
     capacity_side = 'parking:lane:'+side+':capacity' in layer.attributeAliases()
     capacity_both = 'parking:lane:both:capacity' in layer.attributeAliases()
-
+    
+    #This for-loop seems to check, whether each of these features(?) exists in the layer, if it does, it's set to "null"
     #Straßenabschnitte einzeln durchgehen und Parkstreifeninformationen zusammenfassend auslesen
     for feature in layer.getFeatures():
         parking_orientation = NULL
@@ -687,7 +696,8 @@ def prepareParkingLane(layer, side, clean):
         parking_source_capacity = NULL
         parking_width = NULL
         parking_offset = NULL
-
+        
+        #create two new columns which indicates if the id sports a left or right parking lane "id_l" and "id_r" 
         #Identifikator für rechte bzw. linke Parkstreifen in ID ergänzen, um diese später auseinanderhalten zu können
         id = feature.attribute('id')
         if side == 'left':
